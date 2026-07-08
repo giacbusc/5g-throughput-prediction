@@ -13,7 +13,7 @@
 ## Design constraints
 - **Must run end-to-end on Google Colab (T4 GPU) in < ~30 min.**
 - Notebooks are **self-contained**: helper functions are defined **inline** (course-solution style), not imported from a package. There is **no `src/`**.
-- Heavy choices are exposed as constants in the first config cell: `RESAMPLE_SECONDS` (default 60), `N_USERS` (default 1500), `X_VALUES`, `BEST_X`, `LOG_TARGET`.
+- Heavy choices are exposed as constants in the first config cell: `RESAMPLE_SECONDS` (default 60), `N_USERS` (default 1500), `X_VALUES`, `BEST_X`, `OUTLIER_PCT`, `ACTIVE_ONLY`.
 
 ## Raw data format (important)
 Wide format, one folder per metric under each venue (`ACC Arena/`, `Salt & Tar/`):
@@ -34,8 +34,10 @@ notebooks/
 Inter-notebook handoff: `02` writes `data/processed/acc_X{x}.npz` + scaler + column list; `03` writes `results/models/*` and `results/metrics.csv`; `04`/`05` read those.
 
 ## Pipeline conventions
-- **Target**: trained as `log1p(throughput)` (heavily right-skewed); predictions inverted with `expm1` so **metrics are in real Mbps**.
-- **Split**: by `user_id` (70/15/15) to avoid leaking a user's samples across splits.
+- **Target**: raw throughput in Mbps (no transform — matches the course solution notebooks' style). The heavy
+  tail is handled in preprocessing: samples above the **99th train-percentile** are dropped (`OUTLIER_PCT`);
+  EDA shows the top ~1% samples carry ~2/3 of total variance and would dominate MSE/R² otherwise.
+- **Split**: by `user_id` (70/15/15) to avoid leaking a user's samples across splits. Outlier threshold computed on train only, after the split.
 - **Feature schema** (fixed, so TL weights transfer): standardised numeric `[bler, prb, sinr_dl, sinr_ul, x, y, z]` + one-hot `traffic_type` (6 classes) + per-neighbour `[dist, sinr_dl, sinr_ul, prb, bler, throughput]` × X. `ru_id` is venue-specific and excluded.
 - **Metrics**: MSE, MAE, R², training duration.
 - `RANDOM_SEED = 42` everywhere.

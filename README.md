@@ -65,8 +65,8 @@ Each notebook is **self-contained** (all helper functions are defined inline, in
 ## 🔬 Methodology (mapped to the 4 mandatory steps + advanced task)
 
 1. **`01_eda.ipynb` — Raw data analysis.** Load the wide-format ACC Arena data into a tidy per-user/per-timestamp table; inspect throughput distribution, traffic-type effects, correlations, SINR-vs-throughput, spatial layout.
-2. **`02_preprocessing_features.ipynb` — Preprocessing & features.** Build the full tidy table, resample, engineer the **Team-8 X-closest-users features** (3-D Euclidean KD-tree), split **by user** (no leakage), standardise, and save arrays for `X ∈ {0,1,3,5,10}`.
-3. **`03_model_training.ipynb` — Optimisation & training.** Train an **MLP (Keras)** and a **Random Forest (sklearn)** for each `X`; hyperparameters tuned with cross-validation (kept light for the time budget). Target trained as `log1p(throughput)`; metrics reported in Mbps. Records MSE/MAE/R² and **training duration**.
+2. **`02_preprocessing_features.ipynb` — Preprocessing & features.** Build the full tidy table, resample, engineer the **Team-8 X-closest-users features** (3-D Euclidean KD-tree), keep active users only (`ACTIVE_ONLY`), drop extreme-throughput outliers above the 99th train-percentile (`OUTLIER_PCT`, motivated in the EDA), split **by user** (no leakage), standardise, and save arrays for `X ∈ {0,1,3,5,10}`.
+3. **`03_model_training.ipynb` — Optimisation & training.** Train an **MLP (Keras)** and a **Random Forest (sklearn)** for each `X`; hyperparameters tuned with cross-validation (kept light for the time budget). Records MSE/MAE/R², **training duration** and **inference time**.
 4. **`04_evaluation.ipynb` — Testing & scenarios.** Compare NN vs RF across `X`, plot metrics-vs-X, pick the best configuration.
 5. **`05_transfer_learning.ipynb` — Advanced.** Fine-tune the ACC-trained MLP on a limited Salt&Tar set vs the same network trained from scratch.
 
@@ -78,7 +78,7 @@ Each notebook is **self-contained** (all helper functions are defined inline, in
 2. Open each notebook in Colab, set the runtime to **T4 GPU**, and run top-to-bottom **in order** (01 → 05).
 3. The first cells mount Drive, unzip the dataset, and create the output folders automatically.
 
-Key knobs live in the **config cell** at the top of every notebook: `RESAMPLE_SECONDS`, `N_USERS`, `X_VALUES`, `BEST_X`, `LOG_TARGET`.
+Key knobs live in the **config cell** at the top of every notebook: `RESAMPLE_SECONDS`, `N_USERS`, `X_VALUES`, `BEST_X`, `OUTLIER_PCT`, `ACTIVE_ONLY`.
 
 ### Local run
 
