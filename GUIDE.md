@@ -7,13 +7,14 @@
 
 ## Task Summary
 - **Primary (12 pts)**: Throughput regression on ACC Arena users comparing **NN (Keras)** and **Random Forest (sklearn)**.
-  Team-8-specific feature: the **features of the X closest users** (3-D Euclidean distance on x,y,z). Experiment X ∈ {1,3,5,10}.
+  Team-8-specific feature: the **features of the X closest users** (3-D Euclidean distance on x,y,z). Experiment X ∈ {3,5,10}
+  (X=0/1 dropped by team decision: heavy user co-location makes a single arbitrary neighbour uninformative).
 - **Advanced (3 pts)**: Transfer Learning ACC Arena → Salt&Tar. Fine-tuned model vs the same model trained from scratch on a limited Salt&Tar set.
 
 ## Design constraints
 - **Must run end-to-end on Google Colab (T4 GPU) in < ~30 min.**
 - Notebooks are **self-contained**: helper functions are defined **inline** (course-solution style), not imported from a package. There is **no `src/`**.
-- Heavy choices are exposed as constants in the first config cell: `RESAMPLE_SECONDS` (default 60), `N_USERS` (default 1500), `X_VALUES`, `BEST_X`, `OUTLIER_PCT`, `ACTIVE_ONLY`.
+- Heavy choices are exposed as constants in the first config cell: `RESAMPLE_SECONDS` (default 60), `N_USERS` (default 1500, sampled **at random** from the full ~12k ACC Arena population, seeded), `X_VALUES`, `BEST_X`, `OUTLIER_PCT`, `ACTIVE_ONLY`.
 
 ## Raw data format (important)
 Wide format, one folder per metric under each venue (`ACC Arena/`, `Salt & Tar/`):
