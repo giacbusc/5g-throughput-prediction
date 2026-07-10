@@ -32,7 +32,7 @@ The project is designed to **run end-to-end on Google Colab (T4 GPU) in under ~3
 
 **Traffic-type classes:** 0=off, 1=idle, 2=constant_rate, 3=video, 4=gaming, 5=http
 
-> The notebooks resample to **1 sample / `RESAMPLE_SECONDS`** (default 60 s) and load a configurable **`N_USERS`** subset to stay within Colab limits. This is a regression *per sample*, not a time-series forecast, so down-sampling rows does not change the learned feature→throughput relationship.
+> The notebooks aggregate every raw observation into deterministic **`RESAMPLE_SECONDS` windows** (default 120 s). ACC processing uses all 12,000 users by default. Aggregation removes the native 3/4-second sampling jitter without discarding all but the nearest observation.
 
 ---
 
@@ -65,8 +65,8 @@ Each notebook is **self-contained** (all helper functions are defined inline, in
 ## 🔬 Methodology (mapped to the 4 mandatory steps + advanced task)
 
 1. **`01_eda.ipynb` — Raw data analysis.** Load the wide-format ACC Arena data into a tidy per-user/per-timestamp table; inspect throughput distribution, traffic-type effects, correlations, SINR-vs-throughput, spatial layout.
-2. **`02_preprocessing_features.ipynb` — Preprocessing & features.** Build the full tidy table, resample, engineer the **Team-8 X-closest-users features** (3-D Euclidean KD-tree), keep active users only (`ACTIVE_ONLY`), drop extreme-throughput outliers above the 99th train-percentile (`OUTLIER_PCT`, motivated in the EDA), split **by user** (no leakage), standardise, and save arrays for `X ∈ {0,1,3,5,10}`.
-3. **`03_model_training.ipynb` — Optimisation & training.** Train an **MLP (Keras)** and a **Random Forest (sklearn)** for each `X`; hyperparameters tuned with cross-validation (kept light for the time budget). Records MSE/MAE/R², **training duration** and **inference time**.
+2. **`02_preprocessing_features.ipynb` — Preprocessing & features.** Build the full tidy table, aggregate uniform time windows, engineer the **Team-8 X-closest-users features** (3-D Euclidean KD-tree), split **by user**, and fit imputation/scaling on training users only. Neighbour throughput is deliberately excluded to prevent target leakage. The primary experiment retains inactive users and the full throughput distribution.
+3. **`03_model_training.ipynb` — Optimisation & training.** Train an **MLP (Keras)** and a **Random Forest (sklearn)** for each `X`; hyperparameters are tuned with user-grouped cross-validation. Records MSE/RMSE/MAE/R², **training duration** and **inference time**.
 4. **`04_evaluation.ipynb` — Testing & scenarios.** Compare NN vs RF across `X`, plot metrics-vs-X, pick the best configuration.
 5. **`05_transfer_learning.ipynb` — Advanced.** Fine-tune the ACC-trained MLP on a limited Salt&Tar set vs the same network trained from scratch.
 
@@ -78,7 +78,9 @@ Each notebook is **self-contained** (all helper functions are defined inline, in
 2. Open each notebook in Colab, set the runtime to **T4 GPU**, and run top-to-bottom **in order** (01 → 05).
 3. The first cells mount Drive, unzip the dataset, and create the output folders automatically.
 
-Key knobs live in the **config cell** at the top of every notebook: `RESAMPLE_SECONDS`, `N_USERS`, `X_VALUES`, `BEST_X`, `OUTLIER_PCT`, `ACTIVE_ONLY`.
+Key knobs live in the **config cell** at the top of every notebook: `RESAMPLE_SECONDS`, `N_USERS`, `X_VALUES`, `BEST_X`, `OUTLIER_PCT`, `ACTIVE_ONLY`. Keep `N_USERS=None`, `OUTLIER_PCT=None`, and `ACTIVE_ONLY=False` for the primary reported experiment; other values are sensitivity/debug configurations.
+
+Generated files under `data/processed/` are tied to the preprocessing schema. Delete or archive older arrays before rerunning notebook 02 after a schema change.
 
 ### Local run
 
