@@ -8,13 +8,17 @@
 ## Task Summary
 - **Primary (12 pts)**: Throughput regression on ACC Arena users comparing **NN (Keras)** and **Random Forest (sklearn)**.
   Team-8-specific feature: the **features of the X closest users** (3-D Euclidean distance on x,y,z). Experiment X ∈ {3,5,10}
-  (X=0/1 dropped by team decision: heavy user co-location makes a single arbitrary neighbour uninformative).
+  × two **neighbour encodings** — `pos` (ordered per-neighbour columns `nb0_*, nb1_*, ...`) and `agg` (order-invariant
+  aggregates: `nb_prb_sum` ≈ cell load, `nb_throughput_sum`, `nb_sinr_dl/ul_mean`, `nb_bler_mean`, `nb_active_count`) —
+  plus a **X=0 no-neighbour baseline** that quantifies the neighbours' net contribution. Rationale: ~99% user co-location
+  makes the distance ordering arbitrary (ties at ~0 m), so positional columns are permutation noise; aggregates encode the
+  contention mechanism (shared PRB budget) directly. X=1 dropped by team decision (a single arbitrary neighbour is uninformative).
 - **Advanced (3 pts)**: Transfer Learning ACC Arena → Salt&Tar. Fine-tuned model vs the same model trained from scratch on a limited Salt&Tar set.
 
 ## Design constraints
 - **Must run end-to-end on Google Colab (T4 GPU) in < ~30 min.**
 - Notebooks are **self-contained**: helper functions are defined **inline** (course-solution style), not imported from a package. There is **no `src/`**.
-- Heavy choices are exposed as constants in the first config cell: `RESAMPLE_SECONDS` (default 60), `N_USERS` (default 1500, sampled **at random** from the full ~12k ACC Arena population, seeded), `X_VALUES`, `BEST_X`, `OUTLIER_PCT`, `ACTIVE_ONLY`.
+- Heavy choices are exposed as constants in the first config cell: `RESAMPLE_SECONDS` (default 60), `N_USERS` (default 1500, sampled **at random** from the full ~12k ACC Arena population, seeded), `X_VALUES`, `ENCODINGS`, `BEST_X`, `BEST_ENC`, `OUTLIER_PCT`, `ACTIVE_ONLY`.
 
 ## Raw data format (important)
 Wide format, one folder per metric under each venue (`ACC Arena/`, `Salt & Tar/`):
@@ -32,14 +36,14 @@ notebooks/
 ├── 04_evaluation.ipynb             # Step 4 — NN vs RF vs X comparison, picks best
 └── 05_transfer_learning.ipynb      # Advanced — TL ACC → Salt&Tar
 ```
-Inter-notebook handoff: `02` writes `data/processed/acc_X{x}.npz` + scaler + column list; `03` writes `results/models/*` and `results/metrics.csv`; `04`/`05` read those.
+Inter-notebook handoff: `02` writes `data/processed/acc_X0.npz` (baseline), `acc_X{x}.npz` (pos) and `acc_X{x}_agg.npz` (agg) + scaler + column list each; `03` trains the 7 scenarios × 2 models, writes `results/models/*` (`nn/rf_X{x}[_agg]`) and `results/metrics.csv` (with an `enc` column); `04`/`05` read those (`05` follows `BEST_X`/`BEST_ENC`).
 
 ## Pipeline conventions
 - **Target**: raw throughput in Mbps (no transform — matches the course solution notebooks' style). The heavy
   tail is handled in preprocessing: samples above the **99th train-percentile** are dropped (`OUTLIER_PCT`);
   EDA shows the top ~1% samples carry ~2/3 of total variance and would dominate MSE/R² otherwise.
 - **Split**: by `user_id` (70/15/15) to avoid leaking a user's samples across splits. Outlier threshold computed on train only, after the split.
-- **Feature schema** (fixed, so TL weights transfer): standardised numeric `[bler, prb, sinr_dl, sinr_ul, x, y, z]` + one-hot `traffic_type` (6 classes) + per-neighbour `[dist, sinr_dl, sinr_ul, prb, bler, throughput]` × X. `ru_id` is venue-specific and excluded.
+- **Feature schema** (fixed per scenario, so TL weights transfer): standardised numeric `[bler, prb, sinr_dl, sinr_ul, x, y, z]` + one-hot `traffic_type` (6 classes) + neighbour features per the encoding — `pos`: per-neighbour `[dist, sinr_dl, sinr_ul, prb, bler, throughput]` × X; `agg`: `[nb_prb_sum, nb_throughput_sum, nb_sinr_dl_mean, nb_sinr_ul_mean, nb_bler_mean, nb_active_count]` (constant size in X); X=0: none. `ru_id` is venue-specific and excluded.
 - **Metrics**: MSE, MAE, R², training duration.
 - `RANDOM_SEED = 42` everywhere.
 
