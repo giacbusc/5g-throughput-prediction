@@ -18,14 +18,15 @@
 ## Design constraints
 - **Must run end-to-end on Google Colab (T4 GPU) in < ~30 min.**
 - Notebooks are **self-contained**: helper functions are defined **inline** (course-solution style), not imported from a package. There is **no `src/`**.
-- Heavy choices are exposed as constants in the first config cell: `RESAMPLE_SECONDS` (default 60), `N_USERS` (default 1500, sampled **at random** from the full ~12k ACC Arena population, seeded), `X_VALUES`, `ENCODINGS`, `BEST_X`, `BEST_ENC`, `OUTLIER_PCT`, `ACTIVE_ONLY`.
+- Heavy choices are exposed as constants in the first config cell: `RESAMPLE_SECONDS` (default 120 — **the dataset-size knob**: coarsen the time grid rather than subsample users, per the professor's guidance), `N_USERS` (default `None` = **ALL** ~12k ACC users, so the X-closest neighbourhoods are the real ones; an int subsample biases them and is for debug runs only), `X_VALUES`, `ENCODINGS`, `BEST_X`, `BEST_ENC`, `OUTLIER_PCT`, `ACTIVE_ONLY`.
 
 ## Raw data format (important)
 Wide format, one folder per metric under each venue (`ACC Arena/`, `Salt & Tar/`):
 - **Standard metrics** (`Throughput`, `BLER`, `PRB`, `RU_Association`, `SINR` DL/UL): first column `time`, remaining columns `entityStats id <N>` (one per user, ~500 users/file, ~10k rows).
 - **Positions**: first column `timeStamp`, then repeated 5-column blocks `(entityStats id, latitude, longitude, altitude, mobileState)`.
   - `mobileState` → **traffic_type** (0–5); `latitude/longitude` → converted to local **metres** (x,y); `altitude` → z.
-- Time grids across metrics are slightly offset/jittered → aligned with `reindex(method="nearest")` onto a common grid.
+- **Timestamps are jittered** (measured on the raw files): ACC Arena has a nominal 3s cadence but ~1/3 of the steps are 4s, with duplicate stamps (diff 0s) and holes up to 7s; Salt&Tar runs at ~1s. Metrics are offset ~3s from each other (throughput starts at t=1215, the rest at 1212). Alignment: duplicates dropped, then `reindex(method="nearest", tolerance=max(RESAMPLE_SECONDS/2, 4s))` onto a common grid — the 4s floor keeps every grid point matched even at fine grids (0 NaN verified at 120s on both venues).
+- Some Salt&Tar position files have lowercase names (`positions_salt_tar_UE_Id_500_999.csv`): globs must stay case-insensitive-friendly (`*.csv`, not `Positions_*.csv`).
 
 ## Notebooks (run in order)
 ```
