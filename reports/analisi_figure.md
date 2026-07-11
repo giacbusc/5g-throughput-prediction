@@ -226,6 +226,20 @@ Quindi: **la contesa esiste ed è misurabile, ma è debole (r ≈ −0.1 → ~1%
 
 **Estensione suggerita** (chiude il cerchio per la presentazione): feature a livello di RU — `ru_user_count`, `ru_prb_sum` per (istante, RU) — al posto/in aggiunta ai vicini spaziali. Sono i "vicini logici" fisicamente corretti; guadagno atteso piccolo (~+0.01 R²) ma con la motivazione giusta.
 
+### Qual è allora il predittore giusto? La storia dell'utente stesso (2026-07-11)
+
+Se il throughput è domanda per-utente, il suo passato recente deve predirlo. Misurato sul dato grezzo ACC Arena (bucket 60 s, ~1.95M campioni attivi con storia):
+
+| Quantità | Valore |
+|---|---|
+| P(attivo a t \| attivo a t−1) | **0.996** — le sessioni sono quasi permanenti |
+| corr(thr_t, thr_{t−1}) sugli attivi | **+0.877** (lag 2: 0.842, lag 5: 0.737, lag 10: 0.562) |
+| R² baseline persistenza ŷ = thr(t−1) | 0.753 (range pieno) / 0.363 (entro p99) |
+| MAE della sola persistenza | **0.963 Mbps — già meglio del RF agg completo (~0.98)** |
+| R² lineare su soli [thr(t−1), thr(t−2)] | **0.792 (pieno) / 0.574 (entro p99)** vs 0.355 della pipeline attuale |
+
+Una regressione lineare su **due numeri** (i due lag) batte di gran lunga il modello a 18 feature istantanee: tutto il segnale temporale è oggi inutilizzato. Ricetta consigliata: feature di lag per-utente (thr e prb a t−1, t−2, media/dev.std mobile), calcolate solo entro-utente, split per utente invariato, e **baseline di persistenza sempre riportata** (qualunque modello deve batterla). Due avvertenze: (a) questo sposta il task da "nowcasting da contatori radio simultanei" a "forecasting a un passo" — verificare che la traccia del progetto lo consenta; (b) in un setup di forecasting rigoroso anche `prb` va preso a t−1 (il prb simultaneo è quasi tautologico: thr ≈ prb × efficienza spettrale).
+
 ## Nota di housekeeping (non riguarda la validità dei grafici)
 
 I CSV su disco (`results/metrics.csv`, `results/transfer_learning.csv`) contengono ancora i numeri della **run precedente** (es. R² ≈ 0.27 e curve TL con valori diversi da quelli in figura): i notebook 03/04/05 sono stati rieseguiti con la nuova pipeline ma i CSV non riflettono i valori delle figure correnti. Prima della consegna conviene rieseguire le celle di salvataggio così che figure e tabelle numeriche provengano dalla stessa run.
