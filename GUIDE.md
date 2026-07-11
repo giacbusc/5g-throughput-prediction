@@ -35,8 +35,14 @@ notebooks/
 ├── 02_preprocessing_features.ipynb # Step 2 — tidy table + X-closest-users features, saves arrays
 ├── 03_model_training.ipynb         # Step 3 — NN + RF, hyperparameter tuning w/ CV, saves models + metrics.csv
 ├── 04_evaluation.ipynb             # Step 4 — NN vs RF vs X comparison, picks best
-└── 05_transfer_learning.ipynb      # Advanced — TL ACC → Salt&Tar
+├── 05_transfer_learning.ipynb      # Advanced — TL ACC → Salt&Tar
+└── 06_same_traffic_neighbors.ipynb # Experiment — neighbours drawn from the SAME traffic class
 ```
+Notebook 06 is a self-contained experiment (run after 03 so `metrics.csv` exists for the comparison):
+same pipeline/split/outlier rule as 02-03, but neighbours are searched among users with the **same
+`traffic_type` at the same instant** (grouping by `(time, traffic_type)`), aggregated encoding only.
+Writes `results/metrics_sametype.csv` (`enc="agg_same"`) + `models/*_X{x}_same.*` and a comparison chart
+against the X=0 baseline and generic-pool `agg`.
 Inter-notebook handoff: `02` writes `data/processed/acc_X0.npz` (baseline), `acc_X{x}.npz` (pos) and `acc_X{x}_agg.npz` (agg) + scaler + column list each; `03` trains the 7 scenarios × 2 models, writes `results/models/*` (`nn/rf_X{x}[_agg]`) and `results/metrics.csv` (with an `enc` column); `04`/`05` read those (`05` follows `BEST_X`/`BEST_ENC`).
 
 ## Pipeline conventions
